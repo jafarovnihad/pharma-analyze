@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rx Analyze</title>
+<style>
+  :root { --ink:#14201A; --muted:#5C6B63; --line:#D8E0DA; --teal:#0F6E56;
+    --teal-t:#E1F5EE; --amber:#854F0B; --amber-t:#FAEEDA; --red:#A32D2D; --red-t:#F7E7E5; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#FAFBF8; color:var(--ink); max-width:1000px; margin:0 auto; padding:36px 24px 80px; line-height:1.55; }
+  h1 { font-size:24px; font-weight:800; letter-spacing:-.02em; }
+  h1 span { color:var(--teal); }
+  .sub { color:var(--muted); font-size:14px; margin:4px 0 24px; }
+  form.run { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+    background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:8px; }
+  label { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:block; margin-bottom:5px; }
+  input { font:inherit; border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:120px; }
+  button { font:inherit; font-weight:600; cursor:pointer; background:var(--ink); color:#fff;
+    border:none; border-radius:6px; padding:9px 20px; }
+  button:hover { background:var(--teal); }
+  .err { background:var(--red-t); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:12px; margin-top:14px; font-size:14px; }
+  .meta { font-size:13px; color:var(--muted); margin:22px 0 10px; }
+  .prod { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px; }
+  .prod-head { display:flex; align-items:baseline; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .prod-head h2 { font-size:17px; font-weight:700; }
+  .pill { font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px; }
+  .pill.ok { background:var(--teal-t); color:var(--teal); }
+  .pill.order { background:var(--red-t); color:var(--red); }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin:6px 0 4px; }
+  th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; }
+  td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .low td.cover { color:var(--red); font-weight:700; }
+  .sec { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:14px 0 4px; }
+  .move,.ro { font-size:14px; padding:4px 0; }
+  .arrow { color:var(--teal); font-weight:800; }
+  .exp { font-size:14px; padding:4px 0; }
+  .exp .act { color:var(--amber); font-weight:600; }
+  .healthy { color:var(--muted); font-size:14px; padding:8px 0; }
+</style>
+</head>
+<body>
+  <h1>Rx <span>Analyze</span></h1>
+  <div class="sub">Reads current stock and produces transfer, reorder, and expiry recommendations across all products.</div>
+
+  <form class="run" method="POST" action="/analyze">
+    <div>
+      <label>Analyze last … days</label>
+      <input type="number" name="days" min="1" value="<%= days %>">
+    </div>
+    <div>
+      <label>Safety buffer (days)</label>
+      <input type="number" name="safetyDays" min="0" value="<%= safetyDays %>">
+    </div>
+    <button type="submit">Analyze</button>
+  </form>
+
+  <% if (error) { %><div class="err"><%= error %></div><% } %>
+
+  <% if (report) { %>
+    <div class="meta">Generated <%= report.generatedAt %> · window <%= days %> days · safety <%= report.safetyDays %> days · <%= report.products.length %> product(s)</div>
+
+    <% report.products.forEach(p => { %>
+      <div class="prod">
+        <div class="prod-head">
+          <h2><%= p.product %></h2>
+          <span>chain cover: <strong><%= p.chain.coverDays == null ? '—' : p.chain.coverDays + 'd' %></strong></span>
+          <span style="color:var(--muted);font-size:13px;">(reorder point <%= p.chain.reorderPointDays %>d)</span>
+          <% if (p.reorder.orderNow) { %><span class="pill order">Order now</span><% } else { %><span class="pill ok">Stock healthy</span><% } %>
+        </div>
+
+        <table>
+          <thead><tr>
+            <th>Store</th><th class="num">Stock</th><th class="num">Sellable</th>
+            <th class="num">Sale/day</th><th class="num">Cover</th>
+          </tr></thead>
+          <tbody>
+          <% p.markets.forEach(s => { %>
+            <tr class="<%= (s.coverDays !== null && s.coverDays < p.chain.reorderPointDays) ? 'low' : '' %>">
+              <td><%= s.name %></td>
+              <td class="num"><%= s.stock %></td>
+              <td class="num"><%= s.effectiveStock %></td>
+              <td class="num"><%= s.velocity %></td>
+              <td class="num cover"><%= s.coverDays == null ? '—' : s.coverDays + 'd' %></td>
+            </tr>
+          <% }) %>
+          </tbody>
+        </table>
+
+        <% if (p.transfers.length) { %>
+          <div class="sec">Recommended transfers</div>
+          <% p.transfers.forEach(t => { %>
+            <div class="move"><%= t.from %> <span class="arrow">&rarr;</span> <%= t.to %> &nbsp;<strong><%= t.qty %></strong> pcs</div>
+          <% }) %>
+        <% } %>
+
+        <% if (p.reorder.orderNow && p.reorder.perMarket.length) { %>
+          <div class="sec">Reorder plan</div>
+          <% p.reorder.perMarket.forEach(r => { %>
+            <div class="ro"><%= r.market %>: order <strong><%= r.qty %></strong> pcs</div>
+          <% }) %>
+        <% } %>
+
+        <% if (p.fefoAlerts.length) { %>
+          <div class="sec">Expiry alerts</div>
+          <% p.fefoAlerts.forEach(a => { %>
+            <div class="exp"><%= a.market %> · batch <%= a.batchId %> · <%= a.qty %> pcs · <%= a.daysToExpiry %>d left — <span class="act"><%= a.action %></span></div>
+          <% }) %>
+        <% } %>
+
+        <% if (!p.transfers.length && !p.reorder.orderNow && !p.fefoAlerts.length) { %>
+          <div class="healthy">No action needed.</div>
+        <% } %>
+      </div>
+    <% }) %>
+  <% } %>
+</body>
+</html>
