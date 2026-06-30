@@ -127,7 +127,7 @@ const fmtDate = (d) => {
   if (!d) return null;
   const x = new Date(d);
   const p = (n) => String(n).padStart(2, '0');
-  return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${String(x.getFullYear()).slice(-2)}`;
+  return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${x.getFullYear()}`;
 };
 
 // Sum the FEFO-consumed units per distinct expiry date (earliest first).

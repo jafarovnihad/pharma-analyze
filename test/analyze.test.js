@@ -166,7 +166,7 @@ const refillRows = [
 const refRep = analyzeRows(refillRows, { today, safetyDays:0 }).products[0];
 const refill = refRep.transfers.find(t => t.from === 'Store 1' && t.to === 'Store 3');
 assert(refill, 'expected a refill transfer from fast Store 1 to slow Store 3');
-const longLabel = `exp:${new Date(longDate).getDate().toString().padStart(2,'0')}.01.27`;
+const longLabel = `exp:${new Date(longDate).getDate().toString().padStart(2,'0')}.01.2027`;
 assert.strictEqual(refill.exp, longLabel,
   `refill to slow store must ship long-dated stock (${longLabel}), got ${refill.exp}`);
 // And no near-expiry stock should be sent back to the slow store.
@@ -185,14 +185,14 @@ const onePassRows = [
 const opReport = analyzeRows(onePassRows, { today, safetyDays:0 });
 const op = opReport.products[0];
 const nd = new Date(near);
-const nearLabel = `exp:${String(nd.getDate()).padStart(2,'0')}.${String(nd.getMonth()+1).padStart(2,'0')}.${String(nd.getFullYear()).slice(-2)}`;
+const nearLabel = `exp:${String(nd.getDate()).padStart(2,'0')}.${String(nd.getMonth()+1).padStart(2,'0')}.${nd.getFullYear()}`;
 // rescue: near-expiry leaves the slow store
 assert(op.transfers.some(t => t.from === 'Store 3' && t.exp === nearLabel),
   'one-pass: rescue should ship Store 3 near-expiry stock out');
 // refill: long-dated comes BACK into the slow store, in the SAME report
 const refillBack = op.transfers.find(t => t.from === 'Store 1' && t.to === 'Store 3');
 assert(refillBack, 'one-pass: the refill (Store 1 -> Store 3) must appear in the same report');
-assert.strictEqual(refillBack.exp, 'exp:01.01.27',
+assert.strictEqual(refillBack.exp, 'exp:01.01.2027',
   `one-pass refill must ship long-dated stock, got ${refillBack.exp}`);
 // the single plan converges: apply it all, re-run, nothing non-trivial remains
 const opAgain = analyzeRows(applyTransfers(onePassRows, opReport), { today, safetyDays:0 }).products[0];

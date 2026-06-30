@@ -71,7 +71,7 @@
   <% } %>
 
   <% if (report) { %>
-    <div class="meta">Generated <%= report.generatedAt %> · window <%= days %> days · safety <%= report.safetyDays %> days · <%= report.products.length %> product(s)</div>
+    <div class="meta">Generated <%= report.generatedAt.split('-').reverse().join('.') %> · window <%= days %> days · safety <%= report.safetyDays %> days · <%= report.products.length %> product(s)</div>
 
     <% const hasTransfers = report.products.some(p => p.transfers.length); %>
     <div class="actions">
