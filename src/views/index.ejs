@@ -20,6 +20,7 @@
   button { font:inherit; font-weight:600; cursor:pointer; background:var(--ink); color:#fff;
     border:none; border-radius:6px; padding:9px 20px; }
   button:hover { background:var(--teal); }
+  .store-select { font:inherit; border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:#fff; color:var(--ink); }
   button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
   button.ghost:hover { background:#fff; border-color:var(--teal); color:var(--teal); }
   .actions { display:flex; gap:10px; align-items:center; margin:18px 0 6px; flex-wrap:wrap; }
@@ -86,6 +87,16 @@
           <input type="hidden" name="days" value="<%= days %>">
           <input type="hidden" name="safetyDays" value="<%= safetyDays %>">
           <button type="submit" class="ghost">Reset to original data</button>
+        </form>
+      <% } %>
+      <% if (typeof stores !== 'undefined' && stores.length) { %>
+        <form method="GET" action="/export" style="margin:0;display:flex;gap:8px;align-items:center;">
+          <input type="hidden" name="days" value="<%= days %>">
+          <input type="hidden" name="safetyDays" value="<%= safetyDays %>">
+          <select name="store" class="store-select">
+            <% stores.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }) %>
+          </select>
+          <button type="submit" class="ghost">Export ▾</button>
         </form>
       <% } %>
     </div>

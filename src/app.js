@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { analyzeRows, applyTransfers } = require('./mapper');
+const { storesInReport, buildStoreExport } = require('./export');
 const { fetchStockRows } = require('./datasource');
 
 const app = express();
@@ -24,7 +25,7 @@ async function currentRows(opts) {
 }
 
 app.get('/', (req, res) => {
-  res.render('index', { report: null, days: 14, safetyDays: 0, error: null, simulating: !!sandboxRows });
+  res.render('index', { report: null, days: 14, safetyDays: 0, error: null, simulating: !!sandboxRows, stores: [] });
 });
 
 app.post('/analyze', async (req, res) => {
@@ -33,10 +34,10 @@ app.post('/analyze', async (req, res) => {
   try {
     const rows = await currentRows({ windowDays: days });
     const report = analyzeRows(rows, { safetyDays });
-    res.render('index', { report, days, safetyDays, error: null, simulating: !!sandboxRows });
+    res.render('index', { report, days, safetyDays, error: null, simulating: !!sandboxRows, stores: storesInReport(report) });
   } catch (err) {
     console.error(err);
-    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: !!sandboxRows });
+    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: !!sandboxRows, stores: [] });
   }
 });
 
@@ -50,10 +51,10 @@ app.post('/execute', async (req, res) => {
     const report = analyzeRows(rows, { safetyDays });
     sandboxRows = applyTransfers(rows, report); // in-memory only; never written back
     const after = analyzeRows(sandboxRows, { safetyDays });
-    res.render('index', { report: after, days, safetyDays, error: null, simulating: true });
+    res.render('index', { report: after, days, safetyDays, error: null, simulating: true, stores: storesInReport(after) });
   } catch (err) {
     console.error(err);
-    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: !!sandboxRows });
+    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: !!sandboxRows, stores: [] });
   }
 });
 
@@ -65,10 +66,33 @@ app.post('/reset', async (req, res) => {
   try {
     const rows = await currentRows({ windowDays: days });
     const report = analyzeRows(rows, { safetyDays });
-    res.render('index', { report, days, safetyDays, error: null, simulating: false });
+    res.render('index', { report, days, safetyDays, error: null, simulating: false, stores: storesInReport(report) });
   } catch (err) {
     console.error(err);
-    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: false });
+    res.render('index', { report: null, days, safetyDays, error: err.message, simulating: false, stores: [] });
+  }
+});
+
+// Per-store Excel export: download the transfers a given store should ship out.
+// Re-runs the analysis (honouring the active sandbox, like the other routes) and
+// streams an .xlsx. Read-only — nothing is written back.
+app.get('/export', async (req, res) => {
+  const days = Math.max(1, parseInt(req.query.days, 10) || 14);
+  const safetyDays = Math.max(0, parseInt(req.query.safetyDays, 10) || 0);
+  try {
+    const rows = await currentRows({ windowDays: days });
+    const report = analyzeRows(rows, { safetyDays });
+    const store = storesInReport(report).find((s) => String(s.id) === String(req.query.store));
+    if (!store) return res.status(400).send('Unknown or missing store.');
+    const wb = await buildStoreExport(report, store);
+    const safeName = String(store.name).replace(/[^A-Za-z0-9]+/g, '-');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="transfers-${safeName}-${report.generatedAt}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
   }
 });
 
