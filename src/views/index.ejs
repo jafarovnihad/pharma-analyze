@@ -20,6 +20,12 @@
   button { font:inherit; font-weight:600; cursor:pointer; background:var(--ink); color:#fff;
     border:none; border-radius:6px; padding:9px 20px; }
   button:hover { background:var(--teal); }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button.ghost:hover { background:#fff; border-color:var(--teal); color:var(--teal); }
+  .actions { display:flex; gap:10px; align-items:center; margin:18px 0 6px; flex-wrap:wrap; }
+  .banner { background:var(--amber-t); color:var(--amber); border:1px solid var(--amber);
+    border-radius:8px; padding:10px 14px; font-size:13px; font-weight:600; margin-top:14px; }
+  .movexp { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; margin-left:8px; }
   .err { background:var(--red-t); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:12px; margin-top:14px; font-size:14px; }
   .meta { font-size:13px; color:var(--muted); margin:22px 0 10px; }
   .prod { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:16px; }
@@ -59,8 +65,30 @@
 
   <% if (error) { %><div class="err"><%= error %></div><% } %>
 
+  <% if (typeof simulating !== 'undefined' && simulating) { %>
+    <div class="banner">What-if simulation active — showing a hypothetical post-transfer state held in memory only. Nothing is written to the data source; <strong>restart or Reset</strong> returns to the original data.</div>
+  <% } %>
+
   <% if (report) { %>
     <div class="meta">Generated <%= report.generatedAt %> · window <%= days %> days · safety <%= report.safetyDays %> days · <%= report.products.length %> product(s)</div>
+
+    <% const hasTransfers = report.products.some(p => p.transfers.length); %>
+    <div class="actions">
+      <% if (hasTransfers) { %>
+        <form method="POST" action="/execute" style="margin:0;">
+          <input type="hidden" name="days" value="<%= days %>">
+          <input type="hidden" name="safetyDays" value="<%= safetyDays %>">
+          <button type="submit">Apply recommended transfers ▸</button>
+        </form>
+      <% } %>
+      <% if (typeof simulating !== 'undefined' && simulating) { %>
+        <form method="POST" action="/reset" style="margin:0;">
+          <input type="hidden" name="days" value="<%= days %>">
+          <input type="hidden" name="safetyDays" value="<%= safetyDays %>">
+          <button type="submit" class="ghost">Reset to original data</button>
+        </form>
+      <% } %>
+    </div>
 
     <% report.products.forEach(p => { %>
       <div class="prod">
@@ -92,7 +120,7 @@
         <% if (p.transfers.length) { %>
           <div class="sec">Recommended transfers</div>
           <% p.transfers.forEach(t => { %>
-            <div class="move"><%= t.from %> <span class="arrow">&rarr;</span> <%= t.to %> &nbsp;<strong><%= t.qty %></strong> pcs</div>
+            <div class="move"><%= t.from %> <span class="arrow">&rarr;</span> <%= t.to %> &nbsp;<strong><%= t.qty %></strong> pcs<% if (t.exp) { %><span class="movexp"><%= t.exp %></span><% } %></div>
           <% }) %>
         <% } %>
 
