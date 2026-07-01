@@ -105,7 +105,7 @@
       <div class="prod">
         <div class="prod-head">
           <h2><%= p.product %></h2>
-          <span>chain cover: <strong><%= p.chain.coverDays == null ? '—' : p.chain.coverDays + 'd' %></strong></span>
+          <span>chain cover: <strong><%= p.chain.coverDays == null || !isFinite(p.chain.coverDays) ? '—' : p.chain.coverDays + 'd' %></strong></span>
           <span style="color:var(--muted);font-size:13px;">(reorder point <%= p.chain.reorderPointDays %>d)</span>
           <% if (p.reorder.orderNow) { %><span class="pill order">Order now</span><% } else { %><span class="pill ok">Stock healthy</span><% } %>
         </div>

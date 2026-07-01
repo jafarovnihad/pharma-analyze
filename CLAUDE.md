@@ -70,6 +70,9 @@ Nothing else changes — mapper and engine consume the row array.
   sellable? (Engine currently counts to the literal date.)
 - Whether near-expiry batches are too close to expiry to be worth transferring,
   and whether transfers need a "must be received by" deadline.
+- Does min_order mean minimum TRANSFER quantity (current assumption — mapped to
+  minTransferQty) or minimum REORDER quantity? The reorder plan currently
+  ignores it, so "order 2 pcs" lines are possible.
 
 ## Conventions
 - camelCase in JS/JSON, snake_case in SQL columns.

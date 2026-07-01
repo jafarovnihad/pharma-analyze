@@ -7,6 +7,11 @@
  * engine.
  */
 const ExcelJS = require('exceljs');
+const { fmtDate: fmtDateOrNull } = require('./mapper');
+
+// Same DD.MM.YYYY formatter the web report uses (single source, so the two
+// can't drift apart again); blanks render as an em dash in the sheet.
+const fmtDate = (d) => fmtDateOrNull(d) || '—';
 
 // Distinct stores referenced anywhere in the report (id + display name),
 // numeric-aware sorted so "Store 2" comes before "Store 10".
@@ -23,14 +28,6 @@ function storesInReport(report) {
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }));
 }
-
-// DD.MM.YYYY (matches the date format the managers' sheet uses).
-const fmtDate = (d) => {
-  if (!d) return '—';
-  const x = new Date(d);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${x.getFullYear()}`;
-};
 
 // Flatten the report into the outgoing lines for one store: every recommended
 // transfer whose source is this store, split per expiry date so each row is a

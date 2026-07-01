@@ -80,7 +80,7 @@ function analyzeRows(rows, opts = {}) {
     // Adapter-side enrichment (engine untouched): label each recommended
     // transfer with the expiry date(s) of the stock it actually ships, by
     // replaying the moves FEFO exactly as the app would execute them.
-    labelExpiries(cleanMarkets, result.transfers, today);
+    labelExpiries(cleanMarkets, result.transfers);
     // Collapse any duplicate lines for the same route + same expiry into one.
     result.transfers = consolidateTransfers(result.transfers);
     products.push({ productId, ...result });
@@ -93,9 +93,13 @@ function analyzeRows(rows, opts = {}) {
   };
 }
 
+// Format from LOCAL date parts. toISOString() converts to UTC, which shifts
+// local midnight to the previous day in any UTC+ timezone — the report would
+// carry yesterday's date.
 const startOfDayISO = (d) => {
   const x = new Date(d);
-  return new Date(x.getFullYear(), x.getMonth(), x.getDate()).toISOString().slice(0, 10);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
 };
 
 // FEFO order: earliest expiry first, no-expiry batches last (mirrors the engine
@@ -123,8 +127,15 @@ const shipOrder = (fromVel, toVel, items, field) => {
   return [...items].sort((a, b) => cmp(key(a), key(b)));
 };
 
+// DD.MM.YYYY. Date-only ISO strings ("2026-07-04") are split as-is rather than
+// parsed with new Date(), which would read them as UTC midnight and shift them
+// a day in UTC- timezones.
 const fmtDate = (d) => {
   if (!d) return null;
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+    const [y, m, day] = d.slice(0, 10).split('-');
+    return `${day}.${m}.${y}`;
+  }
   const x = new Date(d);
   const p = (n) => String(n).padStart(2, '0');
   return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${x.getFullYear()}`;
@@ -258,4 +269,4 @@ function applyTransfers(rows, report) {
   return out.filter((r) => num(r.expDateBalance) > 0);
 }
 
-module.exports = { analyzeRows, applyTransfers };
+module.exports = { analyzeRows, applyTransfers, fmtDate };
