@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
-    "test": "node test/analyze.test.js"
+    "test": "node test/analyze.test.js",
+    "mock-api": "node tools/mock-api.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
